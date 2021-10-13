@@ -20,6 +20,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+#### 음성분석 샘플파일 ###
+*.mp4
+*.wav
+*.vmpr
+
 # C extensions
 *.so
 

@@ -39,7 +39,7 @@ def get_extream_similarity(start_frame:int, end_frame: int, path: str, imshow: b
 
     score, diff = compare_ssim(grayS, grayE, full=True)
     diff = (diff * 255).astype('uint8')
-    print('극값 유사도 : %.6f' %score)
+    print('양극단 유사도 : %.6f' %score)
 
     if imshow:
         cv2.imshow('start', grayS)

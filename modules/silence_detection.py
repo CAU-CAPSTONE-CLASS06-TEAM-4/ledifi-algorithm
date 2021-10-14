@@ -50,8 +50,8 @@ def check_mute(Path,second, Sample):
             start = -1
             mute_count = 0
         count+=1
-    for k in range(len(mute)):
-        print(mute[k])
+    #for k in range(len(mute)):
+    #    print(mute[k])
     return mute
     
     
@@ -121,11 +121,19 @@ def convert_to_wav_frame(Path, checklist):
     command = "ffmpeg -ss {} -i {} -t {} {}".format(start,Path,end,os.path.join(Convertpath))
     subprocess.call(command,shell=True)
 
+###
 
-SAMPLE1_PATH = "C:/capstone/ledifi-algorithm/vrc/sample7.mp4"
-SAMPLE1_PATH2 = "C:/capstone/ledifi-algorithm/vrc/sample6.wav"
-#convert_to_wav(SAMPLE1_PATH)
-#make_graph(SAMPLE1_PATH2)
-check_mute(SAMPLE1_PATH2,3,10000)
-#check_mute(SAMPLE1_PATH2,3)
-#print(mute_sample(SAMPLE1_PATH,3,[359700,363300]))
+def sd(path, sec, sampling): 
+    try:    # wav파일이 이미 있는지 테스트
+        open(path + '.wav', 'r')
+        print('wav file is already exist.')
+    except FileNotFoundError:   # 없다면 wav파일 생성
+        print('wav file is not exist.')
+        try:
+            convert_to_wav(path+'.mp4')
+        except:
+            print('Wrong path') # 경로가 잘못되었을 경우
+            return
+
+    path = path + '.wav'
+    return check_mute(path, sec, sampling)

@@ -1,4 +1,4 @@
-import vrc
+import video
 
 SAMPLE1_PATH = "C:/Users/Master/Desktop/캡스톤 깃허브/sample1.mp4"
 SAMPLE2_PATH = "C:/Users/Master/Desktop/캡스톤 깃허브/sample2.mp4"
@@ -13,9 +13,9 @@ sample1_ef = {'장면전환1':420, '장면전환2': 120840, '장면전환3': 126
 
 def sample1_testing(text, slice):
     print(text)
-    #vrc.video_play(sample1_sf[text], sample1_ef[text], SAMPLE1_PATH, 2)
-    vrc.get_extream_similarity(sample1_sf[text], sample1_ef[text], SAMPLE1_PATH, True)
-    #vrc.get_average_similarity(sample1_sf[text], sample1_ef[text], SAMPLE1_PATH, int((sample1_ef[text]-sample1_sf[text])/slice), False)
+    #video.video_play(sample1_sf[text], sample1_ef[text], SAMPLE1_PATH, 2)
+    video.get_extream_similarity(sample1_sf[text], sample1_ef[text], SAMPLE1_PATH, True)
+    #video.get_average_similarity(sample1_sf[text], sample1_ef[text], SAMPLE1_PATH, int((sample1_ef[text]-sample1_sf[text])/slice), False)
     print()
 
 slice = 5

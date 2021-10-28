@@ -163,10 +163,12 @@ def get_extream_absdiff(start_frame:int, end_frame: int, path: str, imshow: bool
         cv2.rectangle(grayS, (x, y, w, h), (0, 0, 255), 2)
 
     val = numpy.sum((diff.astype("float")))
+    if val == 0: val = False
+    else: val = True
 
     if imshow:
         #val = (diff * 255).astype('uint8')    
-        print('absdiff 양극단 오차 : %.6f' %val)    
+        print('absdiff 양극단 검사 결과 : ' + str(val))    
         cv2.imshow('start', grayS)
         cv2.imshow('end', grayE)
         cv2.imshow('diff', diff)
@@ -204,3 +206,28 @@ def video_chk(path, lst, TRANSITION_THRES, WRITING_THRES, DEBUG:bool, BLUR:bool)
         lst[i] += [res]
 
     return lst
+
+def test_chk(path, lst, TRANSITION_THRES, WRITING_THRES, DEBUG:bool, BLUR:bool):
+    path += '.mp4'
+    VID_FPS = get_fps(path)
+    for i in range(len(lst)):       ## 테스트 결과에 대한 루프. 
+        start = lst[i][1] * int(VID_FPS)
+        end = lst[i][2] * int(VID_FPS)
+        flag = None
+
+        ### 장면 전환 여부 판단 ###
+        if get_extream_similarity_SSIM(start, end, path, DEBUG, BLUR) < TRANSITION_THRES:
+            flag = 'transition'
+        
+        ### 장면 전환은 아닌 경우, 무변화를 판단 ###
+        if int(get_extream_absdiff(start, end, path, DEBUG, BLUR)) == 0:
+            if not flag: flag = 'no_change'
+        
+        ### 무변화도 아닌 경우, 판서를 판단 ###
+        if get_extream_similarity_MSE(start, end, path, DEBUG, BLUR) > WRITING_THRES:
+            if not flag: flag = 'writing'
+
+        if not flag:
+            flag = 'dot'
+
+        print('res = %s' %flag)

@@ -15,7 +15,7 @@ SETTING_VID_WRITING_THRES = 6
 ### init
 
 res = []
-PATH = SAMPLE_PATH + 'sample01'
+PATH = SAMPLE_PATH + 'sample10'
 
 ## 정적 감지 ##
 import time
@@ -37,7 +37,7 @@ def tempfunc():
 res += tempfunc()
 
 ## 영상 판독 ##
-res = video.video_chk(PATH, res, SETTING_VID_TRANSITION_THRES, SETTING_VID_WRITING_THRES, True, True)
+res = video.video_chk(PATH, res, SETTING_VID_TRANSITION_THRES, SETTING_VID_WRITING_THRES, False, True)
 
 ## 파일 저장 ##
 n = PATH.split('/')

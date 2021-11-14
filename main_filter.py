@@ -1,30 +1,35 @@
-from os import lstat
+import sys
+import cv2
 from modules import video
 from modules import silence_detection
 
-### 사용자로부터 입력받을 경로, 옵션
-SAMPLE_PATH = "C:/Users/Master/Desktop/캡스톤깃허브/"
+### 실행 인자 해석
+# LECTURE
+LECTURE_PATH = sys.argv[1]
+if '.mp4'not in LECTURE_PATH:
+    raise AssertionError('video file must be mp4.')
+LECTURE_PATH = LECTURE_PATH.split('.')[0]
 
-OPTION_SD_SECOND = 3
-OPTION_SD_SAMPLING = 1000
+# SETTING
+SETTING_PATH = sys.argv[2]
+f = open(SETTING_PATH)
+OPTION_SD_SECOND = int(f.readline().split()[1])
+f.close()
 
-### 테스트 세팅
+### threshold 세팅
 SETTING_VID_TRANSITION_THRES = 0.93
 SETTING_VID_WRITING_THRES = 6
+SETTING_SD_SAMPLE_SLICE = 10
+SETTING_SD_SILENCE_THRES = 0.005
 
 ### init
 
 res = []
-PATH = SAMPLE_PATH + 'sample10'
+cap = cv2.VideoCapture(LECTURE_PATH+'.mp4')
+LECTURE_FPS = cap.get(cv2.CAP_PROP_FPS)
 
 ## 정적 감지 ##
-import time
-
-s = time.time()
-sd_res = silence_detection.sd(PATH, OPTION_SD_SECOND, OPTION_SD_SAMPLING)
-e = time.time()
-print('time: ', end="")
-print(e-s)
+sd_res = silence_detection.sd(LECTURE_PATH, LECTURE_FPS, OPTION_SD_SECOND, SETTING_SD_SAMPLE_SLICE, SETTING_SD_SILENCE_THRES)
 
 for i in range(len(sd_res)):
     sd_res[i] = ['silence'] + sd_res[i]
@@ -37,14 +42,11 @@ def tempfunc():
 res += tempfunc()
 
 ## 영상 판독 ##
-res = video.video_chk(PATH, res, SETTING_VID_TRANSITION_THRES, SETTING_VID_WRITING_THRES, False, True)
+res = video.video_chk(LECTURE_PATH, res, SETTING_VID_TRANSITION_THRES, SETTING_VID_WRITING_THRES, False)
 
 ## 파일 저장 ##
-n = PATH.split('/')
-n = n[len(n)-1]
-f = open(n+'.txt','w')
-
+f = open(LECTURE_PATH+'.txt','w')
+f.write('FPS: %d\n' %LECTURE_FPS)
 for i in range(len(res)):
-    f.write(res[i][0] + " " + str(res[i][1]) + " " + str(res[i][2]) + " " + str(res[i][3]) + "\n")
-
+    f.write('%s %d %d %s\n' %(res[i][0], res[i][1], res[i][2], res[i][3]))
 f.close()

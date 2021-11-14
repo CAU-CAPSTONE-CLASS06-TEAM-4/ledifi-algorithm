@@ -1,3 +1,4 @@
+import wave
 import subprocess
 import librosa
 import matplotlib.pyplot as plt         #그래프
@@ -22,38 +23,46 @@ def getAmplitude(Path, Sample):
     y, sr = librosa.load(Path,sr = Sample)
     return y
 
-def check_mute(Path,second, Sample):
+def check_mute(Path, fps, second, sample_slice, silence_thres):
     # path는 파일이 있는 경로, second는 정적을 판단할 시간초, Sample은 초당 sampling할 샘플의 수
     # 시작부터 끝까지 탐색하여 정적인 구간 반환하는 함수
     # 반환형은 list이고, 리스트의 각 원소 list[0] ~ 에는 정적의 시작과 끝이 리스트로 들어있는 이중리스트구조
-    if Path[-3:] != 'wav':
-        print('file is not wav')
-        return False
+    f = wave.open(Path, 'rb')
+    sr = f.getframerate()
+    fr = f.getnframes()
+    f.close()
+
     print("wav loading")
-    y, sr = librosa.load(Path,sr = Sample)    
+    y, sr = librosa.load(Path,sr = None)    
     print("wav loading end")
-    count = 0
-    mute_count = 0
-    start = -1
+
     mute = []
-    for i in y:
-        if i < 0.005 and i>-0.005:
-            if start == -1: #시작 위치를 설정
-                start = count
-            mute_count += 1
-        else:
-            if start != -1 and mute_count > sr*second:
-                #일단은 초까지만 반영해서 return 하지만, 0.1초까지 return할지, 프레임 단위로 리턴할지 결정해야함
-                temp1 = start//Sample
-                temp2 = count//Sample
-                mute += [[temp1,temp2]]
-            start = -1
-            mute_count = 0
-        count+=1
-    #for k in range(len(mute)):
-    #    print(mute[k])
-    return mute
+    silenced = False
+    start = 0
+    end = 0
     
+    for i in range(0, len(y), int(sr/sample_slice)):
+        val = y[i]
+        if -silence_thres < val < silence_thres:    # 정적 감지
+            if not silenced:    # 이전에 정적이 아니었다면, 정적이 시작되는 부분을 기록
+                silenced = True
+                start = i
+                end = i
+            else:               # 이전에 정적이었다면, 정적이 끝나는 부분을 갱신
+                end+=int(sr/sample_slice)
+        
+        else:                                       # 음성 감지 
+            if silenced:               # 이전에 정적이었다면, 정적이 끝난 것이므로 결과에 추가. start와 end 값은 샘플링레이트/샘플슬라이스이므로, 스케일링 필요.
+                silenced = False
+                start = start / sr
+                end = end / sr
+                
+                if end-start >= second:
+                    start *= fps
+                    end *= fps
+                    mute.append([int(start), int(end)])
+                                                 
+    return mute
     
 def make_graph(path, Sample):   
     # wav파일 받아서 그래프 그리는 함수
@@ -90,6 +99,7 @@ def mute_sample(Path, second,checklist ,Sample):
     startAmp = -1
     mute = []
     ismute = False
+    
     for i in y:
         if i < 0.005 and i>-0.005:
             if startAmp == -1: #시작 위치를 설정
@@ -104,6 +114,7 @@ def mute_sample(Path, second,checklist ,Sample):
             start = -1
             mute_count = 0
         count+=1
+        
     for k in range(len(mute)):
         print(mute[k])
     return ismute
@@ -123,7 +134,7 @@ def convert_to_wav_frame(Path, checklist):
 
 ###
 
-def sd(path, sec, sampling): 
+def sd(path, fps, sec, sample_slice, silence_thres): 
     try:    # wav파일이 이미 있는지 테스트
         open(path + '.wav', 'r')
         print('wav file is already exist.')
@@ -136,4 +147,5 @@ def sd(path, sec, sampling):
             return
 
     path = path + '.wav'
-    return check_mute(path, sec, sampling)
+    return check_mute(path, fps, sec, sample_slice, silence_thres)
+                    

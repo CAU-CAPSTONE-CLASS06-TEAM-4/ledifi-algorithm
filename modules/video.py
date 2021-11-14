@@ -59,22 +59,14 @@ def video_play(start_frame:int, end_frame: int, path: str, waitkey: int):
 
 ### SSIM 극값 유사도 측정 ###
 
-def get_extream_similarity_SSIM(start_frame:int, end_frame: int, path: str, imshow: bool, blur: bool):
-    frames = video_slice_boundary(start_frame, end_frame, path)  
-    grayS = cv2.cvtColor(frames[0], cv2.COLOR_BGR2GRAY)
-    grayE = cv2.cvtColor(frames[1], cv2.COLOR_BGR2GRAY)
-
-    if blur:
-        grayS = cv2.GaussianBlur(grayS, (0,0), 1.0)
-        grayE = cv2.GaussianBlur(grayE, (0,0), 1.0)
-
-    score, diff = compare_ssim(grayS, grayE, full=True)
+def get_extream_similarity_SSIM(start_frame:int, end_frame: int, path: str, imshow: bool):
+    score, diff = compare_ssim(start_frame, end_frame, full=True)
     diff = (diff * 255).astype('uint8')
 
     if imshow:
         print('SSIM 양극단 유사도 : %.6f' %score)
-        cv2.imshow('start', grayS)
-        cv2.imshow('end', grayE)
+        cv2.imshow('start', start_frame)
+        cv2.imshow('end', end_frame)
         cv2.imshow('diff', diff)
         while not (cv2.waitKey(1) & 0xFF == ord('q')):
             pass
@@ -82,61 +74,17 @@ def get_extream_similarity_SSIM(start_frame:int, end_frame: int, path: str, imsh
 
     return score
 
-### SSIM 평균 유사도 측정 ###
-
-def get_average_similarity_SSIM(start_frame:int, end_frame: int, path: str, tic: int, imshow: bool):  
-    if tic < 1: 
-        print("tic must be bigger than 0")
-        return
-
-    frame_list = video_slice_full(start_frame, end_frame, path)  
-    sliced_frame = []
-    for i in range(0, len(frame_list), tic):
-        sliced_frame.append(frame_list[i])
-
-    avg = 0
-
-    for i in range(len(sliced_frame)-1):
-        i1 = sliced_frame[i]
-        i2 = sliced_frame[i+1]
-        gray1 = cv2.cvtColor(i1, cv2.COLOR_BGR2GRAY)
-        gray2 = cv2.cvtColor(i2, cv2.COLOR_BGR2GRAY)
-
-        score, diff = compare_ssim(gray1, gray2, full=True)
-        diff = (diff * 255).astype('uint8')
-        avg+=score
-
-        if imshow:
-            print('similarity of %dth loop: %.6f' %(i, score))
-            cv2.imshow(str(i) + "th image", i1)
-            cv2.imshow(str(i+1) + "th image", i2)
-            cv2.imshow('diff between '+str(i)+'th and ' + str(i+1) + 'th', diff)
-            while not (cv2.waitKey(1) & 0xFF == ord('q')):
-                pass
-            cv2.destroyAllWindows()
-    avg /= (len(sliced_frame)-1)
-    print('평균 유사도 : %.6f' %avg)
-
-    return avg
 
 ### MSE 극값 오차 측정 ###
 
-def get_extream_similarity_MSE(start_frame:int, end_frame: int, path: str, imshow: bool, blur: bool):
-    frames = video_slice_boundary(start_frame, end_frame, path)  
-    grayS = cv2.cvtColor(frames[0], cv2.COLOR_BGR2GRAY)
-    grayE = cv2.cvtColor(frames[1], cv2.COLOR_BGR2GRAY)
-
-    if blur:
-        grayS = cv2.GaussianBlur(grayS, (0,0), 1.0)
-        grayE = cv2.GaussianBlur(grayE, (0,0), 1.0)
-
-    err = numpy.sum((grayS.astype("float") - grayE.astype("float"))**2)
-    err /= float(grayS.shape[0] * grayE.shape[1])
+def get_extream_similarity_MSE(start_frame:int, end_frame: int, path: str, imshow: bool):
+    err = numpy.sum((start_frame.astype("float") - end_frame.astype("float"))**2)
+    err /= float(start_frame.shape[0] * end_frame.shape[1])
 
     if imshow:
         print('MSE 양극단 오차 : %.6f' %err)
-        cv2.imshow('start', grayS)
-        cv2.imshow('end', grayE)
+        cv2.imshow('start', start_frame)
+        cv2.imshow('end', end_frame)
         while not (cv2.waitKey(1) & 0xFF == ord('q')):
             pass
         cv2.destroyAllWindows()
@@ -144,23 +92,15 @@ def get_extream_similarity_MSE(start_frame:int, end_frame: int, path: str, imsho
     return err
 
 ### absdiff 극값 ###
-def get_extream_absdiff(start_frame:int, end_frame: int, path: str, imshow: bool, blur: bool):
-    frames = video_slice_boundary(start_frame, end_frame, path)  
-    grayS = cv2.cvtColor(frames[0], cv2.COLOR_BGR2GRAY)
-    grayE = cv2.cvtColor(frames[1], cv2.COLOR_BGR2GRAY)
-
-    if blur:
-        grayS = cv2.GaussianBlur(grayS, (0,0), 1.0)
-        grayE = cv2.GaussianBlur(grayE, (0,0), 1.0)
-
-    diff = cv2.absdiff(grayS, grayE)
+def get_extream_absdiff(start_frame:int, end_frame: int, path: str, imshow: bool):
+    diff = cv2.absdiff(start_frame, end_frame)
     _, diff = cv2.threshold(diff, 30, 255, cv2. THRESH_BINARY)
 
     cnt, _, stats, _ = cv2.connectedComponentsWithStats(diff)
     for i in range(1, cnt):
         x, y, w, h ,s = stats[i]
         if s < 100: continue
-        cv2.rectangle(grayS, (x, y, w, h), (0, 0, 255), 2)
+        cv2.rectangle(start_frame, (x, y, w, h), (0, 0, 255), 2)
 
     val = numpy.sum((diff.astype("float")))
     if val == 0: val = False
@@ -169,8 +109,8 @@ def get_extream_absdiff(start_frame:int, end_frame: int, path: str, imshow: bool
     if imshow:
         #val = (diff * 255).astype('uint8')    
         print('absdiff 양극단 검사 결과 : ' + str(val))    
-        cv2.imshow('start', grayS)
-        cv2.imshow('end', grayE)
+        cv2.imshow('start', start_frame)
+        cv2.imshow('end', end_frame)
         cv2.imshow('diff', diff)
         while not (cv2.waitKey(1) & 0xFF == ord('q')):
             pass
@@ -180,23 +120,29 @@ def get_extream_absdiff(start_frame:int, end_frame: int, path: str, imshow: bool
 
 ### 메인 테스팅 ##
 
-def video_chk(path, lst, TRANSITION_THRES, WRITING_THRES, DEBUG:bool, BLUR:bool):
+def video_chk(path, lst, TRANSITION_THRES, WRITING_THRES, DEBUG:bool):
     path += '.mp4'
-    VID_FPS = get_fps(path)
     for i in range(len(lst)):       ## 테스트 결과에 대한 루프. 
-        start = lst[i][1] * int(VID_FPS)
-        end = lst[i][2] * int(VID_FPS)
+        start = lst[i][1] 
+        end = lst[i][2]
+
+        frames = video_slice_boundary(start, end, path)  
+        grayS = cv2.cvtColor(frames[0], cv2.COLOR_BGR2GRAY)
+        grayE = cv2.cvtColor(frames[1], cv2.COLOR_BGR2GRAY)
+
+        grayS = cv2.GaussianBlur(grayS, (0,0), 1.0)
+        grayE = cv2.GaussianBlur(grayE, (0,0), 1.0)
 
         ### 장면 전환 여부 판단 ###
-        if get_extream_similarity_SSIM(start, end, path, DEBUG, BLUR) < TRANSITION_THRES:
+        if get_extream_similarity_SSIM(grayS, grayE, path, DEBUG) < TRANSITION_THRES:
             res = 'transition'
         
         ### 장면 전환은 아닌 경우, 무변화를 판단 ###
-        elif int(get_extream_absdiff(start, end, path, DEBUG, BLUR)) == 0:
+        elif int(get_extream_absdiff(grayS, grayE, path, DEBUG)) == 0:
             res = 'no_change'
         
         ### 무변화도 아닌 경우, 판서를 판단 ###
-        elif get_extream_similarity_MSE(start, end, path, DEBUG, BLUR) > WRITING_THRES:
+        elif get_extream_similarity_MSE(grayS, grayE, path, DEBUG) > WRITING_THRES:
             res = 'writing'
 
         ### 셋 다 아닌 경우, 레이저 포인터같은 아주 미세한 변화 ###
@@ -206,28 +152,3 @@ def video_chk(path, lst, TRANSITION_THRES, WRITING_THRES, DEBUG:bool, BLUR:bool)
         lst[i] += [res]
 
     return lst
-
-def test_chk(path, lst, TRANSITION_THRES, WRITING_THRES, DEBUG:bool, BLUR:bool):
-    path += '.mp4'
-    VID_FPS = get_fps(path)
-    for i in range(len(lst)):       ## 테스트 결과에 대한 루프. 
-        start = lst[i][1] * int(VID_FPS)
-        end = lst[i][2] * int(VID_FPS)
-        flag = None
-
-        ### 장면 전환 여부 판단 ###
-        if get_extream_similarity_SSIM(start, end, path, DEBUG, BLUR) < TRANSITION_THRES:
-            flag = 'transition'
-        
-        ### 장면 전환은 아닌 경우, 무변화를 판단 ###
-        if int(get_extream_absdiff(start, end, path, DEBUG, BLUR)) == 0:
-            if not flag: flag = 'no_change'
-        
-        ### 무변화도 아닌 경우, 판서를 판단 ###
-        if get_extream_similarity_MSE(start, end, path, DEBUG, BLUR) > WRITING_THRES:
-            if not flag: flag = 'writing'
-
-        if not flag:
-            flag = 'dot'
-
-        print('res = %s' %flag)

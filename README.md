@@ -28,14 +28,14 @@ ex) python main_filter.py C:\\Users\\Master\\Desktop\\testpath\\sample01.mp4 C:\
 
 ex) 결과 예시
 
-FPS: 30
-silence 327 501 transition
-silence 1902 2088 transition
-silence 6393 6531 transition
-silence 18951 19059 no_change
-silence 27924 28017 transition
-silence 35217 35316 transition
-silence 95934 96024 no_change
-silence 99339 99459 writing
-silence 116304 116430 transition
-silence 120717 120825 transition
+FPS: 30</br>
+silence 327 501 transition</br>
+silence 1902 2088 transition</br>
+silence 6393 6531 transition</br>
+silence 18951 19059 no_change</br>
+silence 27924 28017 transition</br>
+silence 35217 35316 transition</br>
+silence 95934 96024 no_change</br>
+silence 99339 99459 writing</br>
+silence 116304 116430 transition</br>
+silence 120717 120825 transition</br>

@@ -46,7 +46,7 @@ res = video.video_chk(LECTURE_PATH, res, SETTING_VID_TRANSITION_THRES, SETTING_V
 
 ## 파일 저장 ##
 f = open(LECTURE_PATH+'.txt','w')
-f.write('FPS: %d\n' %LECTURE_FPS)
+f.write('FPS: %.6f\n' %LECTURE_FPS)
 for i in range(len(res)):
     f.write('%s %d %d %s\n' %(res[i][0], res[i][1], res[i][2], res[i][3]))
     f.write('%s %d %d %s\n' %('filler', res[i][1], res[i][2], res[i][3]))

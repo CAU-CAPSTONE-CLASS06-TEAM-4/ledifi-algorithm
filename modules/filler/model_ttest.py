@@ -9,7 +9,7 @@ import os
 """
 초기화
 """
-DATA_PATH = "C:/Users/Master/Desktop/nonokset/"
+DATA_PATH = "C:/Users/Master/Desktop/new_dataset/dataset/"
 
 train_X  =[]
 train_y = []
@@ -32,8 +32,9 @@ for filename in os.listdir(DATA_PATH+"train/"):
     padded_mfcc = pad2d(mfcc, 40)
     train_X.append(padded_mfcc)
 
-    if filename[0] == '정'   : train_y.append(0)
-    else                     : train_y.append(1)
+    if filename[0] == '외'   : train_y.append(2)
+    elif filename[0] == '어'   : train_y.append(0)
+    elif filename[0] == '음'   : train_y.append(1)
 
     
 """
@@ -46,9 +47,13 @@ for filename in os.listdir(DATA_PATH+"test/"):
     padded_mfcc = pad2d(mfcc, 40)
     test_X.append(padded_mfcc)
 
-    if filename[0] == '정'   : test_y.append(0)
-    else                     : test_y.append(1)
+    if filename[0] == '외'   : test_y.append(2)
+    elif filename[0] == '어'   : test_y.append(0)
+    elif filename[0] == '음'   : test_y.append(1)
     
+
+
+
 """
 데이터 텐서화
 """
@@ -65,21 +70,30 @@ train_X = np.expand_dims(train_X, -1)
 test_X = np.expand_dims(test_X, -1)
 
 ip = Input(shape=train_X[0].shape)
+
+
 m = layers.Conv2D(32, kernel_size=(4,4), activation='relu')(ip)
 m = layers.MaxPooling2D(pool_size=(4,4))(m)
 m = layers.Conv2D(64, kernel_size=(4,4), activation='relu')(ip)
 m = layers.MaxPooling2D(pool_size=(4,4))(m)
+m = layers.Conv2D(128, kernel_size=(4,4), activation='relu')(ip)
+m = layers.MaxPooling2D(pool_size=(4,4))(m)
+
+
 m = layers.Flatten()(m)
+
+m = layers.Dense(64, activation='relu')(m)
 m = layers.Dense(32, activation='relu')(m)
-op = layers.Dense(2, activation='sigmoid')(m)
+
+op = layers.Dense(3, activation='softmax')(m)
 
 model = Model(ip, op)
 model.summary()
 
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-history = model.fit(train_X, train_y, epochs=20, batch_size=32, verbose=1, validation_data=(test_X, test_y))
+history = model.fit(train_X, train_y, epochs=100, batch_size=32, verbose=1, validation_data=(test_X, test_y))
 
-model.save('filler_detection_model_nonok.h5')
+model.save('filler_detection_model_jjin.h5')
 
 ###
 '''

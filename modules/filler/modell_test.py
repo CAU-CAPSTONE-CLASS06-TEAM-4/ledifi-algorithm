@@ -45,6 +45,8 @@ import numpy as np
 
 pad2d = lambda a, i: a[:, 0:i] if a.shape[1] > i else np.hstack((a, np.zeros((a.shape[0], i-a.shape[1]))))
 model = load_model("ledifi-algorithm/modules/filler/filler_detection_model.h5")
+
+'''
 DATA_PATH = "C:/Users/Master/Desktop/dataset/"
 testings = ['그003', '그080', '그201', '어279', '어285', '어303', '외210', '외711', '외729', '음609', '음717', '음821']
 
@@ -55,3 +57,11 @@ for testing in testings:
     padded_mfcc= np.expand_dims(padded_mfcc, 0)
     y = model.predict(padded_mfcc)
     print(testing, ":", y)
+'''
+
+audio, sr = librosa.load('C:/Users/Master/Desktop/filler_test/nonsilents/0,0,2,4~0,0,2,6.wav')
+mfcc = librosa.feature.mfcc(audio)
+padded_mfcc = pad2d(mfcc, 40)
+padded_mfcc = np.expand_dims(padded_mfcc, 0)
+y = model.predict(padded_mfcc)
+print(y)

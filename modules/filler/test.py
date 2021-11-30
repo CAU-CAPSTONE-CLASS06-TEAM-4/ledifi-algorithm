@@ -21,7 +21,7 @@ padded_mfcc = np.expand_dims(padded_mfcc, 0)
 y = model.predict(padded_mfcc)
 print(y)
 '''
-
+'''
 
 import os
 DATA_PATH = "C:/Users/Master/Desktop/new_dataset/"
@@ -32,3 +32,8 @@ for filename in os.listdir(DATA_PATH+"nodab"):
     file_newname = os.path.join(DATA_PATH+"nodab", newname)
     count +=1
     os.rename(file_oldname, file_newname)
+'''
+
+a = [1,2,3]
+b = [5,6,7]
+print(a+b)

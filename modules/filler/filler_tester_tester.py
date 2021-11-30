@@ -191,11 +191,20 @@ def predicting(nonsilents, FILE_PATH, MODEL_PATH, make_result_bool):
 def main(FILE_PATH, MODEL_PATH, BIGGER_THAN, LESS_THAN):
     nonsilents = scale_and_detect(FILE_PATH, True, False, False)
     nonsilents = get_bounded(nonsilents, BIGGER_THAN, LESS_THAN, False, False, FILE_PATH)
-    res = predicting(nonsilents, FILE_PATH, MODEL_PATH, True)
-    for re in res: print(re)
+    res = predicting(nonsilents, FILE_PATH, MODEL_PATH, False)
+    return res
+
+def fd(FILE_PATH, LECTURE_FPS, MODEL_PATH, BIGGER_THAN, LESS_THAN):
+    res = []
+    main_res = main(FILE_PATH, MODEL_PATH, BIGGER_THAN, LESS_THAN)
+    for i in range(len(main_res)):
+        s = (main_res[i][0]/1000)*LECTURE_FPS
+        e = (main_res[i][1]/1000)*LECTURE_FPS
+        res.append(['filler', int(s), int(e)])
+    return res
 
 ###
-
+'''
 import subprocess
 
 def convert_to_wav(Path):   
@@ -209,9 +218,10 @@ def convert_to_wav(Path):
     subprocess.call(command,shell=True)
 
 FILE_PATH = "C:/Users/Master/Desktop/new_dataset/08-2/08-1"
-MODEL_PATH = "ledifi-algorithm/modules/filler/filler_detection_model_jjin.h5"
+MODEL_PATH = "ledifi-algorithm/modules/filler/filler_detection_model_epoch100.h5"
 BIGGER_THAN = 100
 LESS_THAN = 1000
 
 #convert_to_wav(FILE_PATH+".mp4")
 main(FILE_PATH+".wav", MODEL_PATH, BIGGER_THAN, LESS_THAN)
+'''

@@ -1,8 +1,8 @@
 import sys
 import cv2
 from modules import video
-from modules import silence_detection
-from modules.filler.filler_tester_tester import fd
+from modules.silence_detection import sd_librosa
+from modules.filler.filler_detection import fd
 
 ### 실행 인자 해석
 # LECTURE
@@ -23,19 +23,20 @@ SETTING_VID_WRITING_THRES = 6
 SETTING_SD_SAMPLE_SLICE = 10
 SETTING_SD_SILENCE_THRES = 0.005
 
+SETTING_FD_MIN_SILENCE_LEN = 70
+SETTING_FD_SILENCE_THRESH = -43
 SETTING_FD_BIGGER_THAN = 100
 SETTING_FD_LESS_THAN = 1000
 MODEL_PATH = "ledifi-algorithm/modules/filler/filler_detection_model_epoch100.h5"
 
 ### init
-
 res = []
 cap = cv2.VideoCapture(LECTURE_PATH+'.mp4')
 LECTURE_FPS = cap.get(cv2.CAP_PROP_FPS)
 
 ## 정적 감지 ##
 print("### detecting silence ###")
-sd_res = silence_detection.sd(LECTURE_PATH, LECTURE_FPS, OPTION_SD_SECOND, SETTING_SD_SAMPLE_SLICE, SETTING_SD_SILENCE_THRES)
+sd_res = sd_librosa(LECTURE_PATH, LECTURE_FPS, OPTION_SD_SECOND, SETTING_SD_SAMPLE_SLICE, SETTING_SD_SILENCE_THRES)
 
 for i in range(len(sd_res)):
     sd_res[i] = ['silence'] + sd_res[i]
@@ -43,9 +44,8 @@ res = sd_res
 
 ## 간투사 검출 ##
 print("### detecting filler ###")
-temp = fd(LECTURE_PATH+'.wav', LECTURE_FPS, MODEL_PATH, SETTING_FD_BIGGER_THAN, SETTING_FD_LESS_THAN)
-for i in range(0, len(temp), int(len(temp)/10)):
-    res.append(temp[i])
+temp = fd(LECTURE_PATH, MODEL_PATH, LECTURE_FPS, SETTING_FD_MIN_SILENCE_LEN, SETTING_FD_SILENCE_THRESH, SETTING_FD_BIGGER_THAN, SETTING_FD_LESS_THAN)
+res += temp
 
 ## 영상 판독 ##
 print("### video checking ###")

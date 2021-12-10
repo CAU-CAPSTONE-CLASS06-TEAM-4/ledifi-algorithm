@@ -1,115 +1,141 @@
-import os
-import numpy as np
-import librosa
-from keras.models import load_model
 from pydub import AudioSegment
+from pydub.audio_segment import AUDIO_FILE_EXT_ALIASES
 from pydub.silence import detect_nonsilent
+from keras.models import load_model
+import librosa
+import numpy as np
+import os
 
-import warnings
-warnings.simplefilter("ignore", UserWarning)
+
+def lst_to_HMS(lst, fps):
+
+    ahour, bhour, amin, bmin = 0, 0, 0, 0
+    asec = (lst[0]/fps)
+    bsec = (lst[1]/fps)
+    
+    while asec > 60: 
+        asec -= 60
+        amin += 1
+
+    while bsec > 60:
+        bsec -= 60
+        bmin += 1
+
+    while amin > 60:
+        amin -= 60
+        ahour += 1
+
+    while bmin > 60:
+        bmin -= 60
+        bhour += 1
+
+    if type(asec) == type(0.1):
+        asec = str(asec).split('.')
+        asec = asec[0] + "," + asec[1][0]
+
+    if type(bsec) == type(0.1):
+        bsec = str(bsec).split('.')
+        bsec = bsec[0] + "," + bsec[1][0]
+    
+    astring = str(ahour) + "," + str(amin) + "," + str(asec)
+    bstring = str(bhour) + "," + str(bmin) + "," + str(bsec)
+    res = astring + "~" + bstring
+        
+    return res
+
+def get_bounded(nonsilents, n, m):
+    res = []
+    for line in nonsilents:
+        if n <= line[1] - line[0] <= m: res.append(line)
+    return res
 
 pad2d = lambda a, i: a[:,0:i] if a.shape[1] > i else np.hstack((a, np.zeros((a.shape[0], i-a.shape[1]))))
 
-######
-def scale_and_detect(PATH, DEBUG):
-    lecture_pydub = AudioSegment.from_wav(PATH)
-    lecture_pydub = lecture_pydub.apply_gain(-20.0 - lecture_pydub.dBFS)
+def is_filler(audio: AudioSegment, model):
+    audio.export("temp.wav", format='wav')
 
-    print('filler: detecting nonsilent from lecture')
-    nonsilents = detect_nonsilent(lecture_pydub, min_silence_len=70, silence_thresh=-32.64)
-    print('filler: detecting end')
-
-    if DEBUG:
-        f = open('testing.txt', 'w')
-        for i in range(len(nonsilents)):
-            f.write('%s %s\n' %(nonsilents[i][0], nonsilents[i][1]))
-        f.close()
-
-    return nonsilents
-
-def is_filler(audio_file: AudioSegment, model):
-    audio_file.export("temp.wav", format='wav')
-
-    wav, sr = librosa.load("temp.wav", sr=16000)
-    frame_length = 0.025
-    mfcc = librosa.feature.mfcc(wav, n_fft = int(round(sr*frame_length)))
-    padded_mfcc = pad2d(mfcc, 40)
+    wav, _ = librosa.load("temp.wav", sr=16000)
+    mfcc = librosa.feature.mfcc(wav, sr=16000, n_mfcc=100, n_fft=400, hop_length=160)
+    padded_mfcc = pad2d(mfcc, 80)
     padded_mfcc = np.expand_dims(padded_mfcc, 0)
 
-    res = model.predict(padded_mfcc)
+    predict_result = model.predict(padded_mfcc)
     try: os.remove("temp.wav")
-    except: pass
-    if res[0][0] >= 0.9: return True
-    else: return False
+    except: pass    
 
-def slice_recursive(res:list, model, audio: AudioSegment, min_silence, start):
-    min_silence = int(min_silence/1.2)
-    if min_silence < 10: return 
+    return predict_result
 
-    scaled_audio = audio.apply_gain(-20.0 - audio.dBFS)
-    nonsilents = detect_nonsilent(scaled_audio, min_silence_len=min_silence, silence_thresh=-32.64)
-    
-    for nonsilent in nonsilents:
-        nonsilent_audio = audio[nonsilent[0]:nonsilent[1]]
-        if is_filler(nonsilent_audio, model):
-            if nonsilent[1]-nonsilent[0] < 460:
-                res.append([nonsilent[0]+start, nonsilent[1]+start])
-            else:
-                slice_recursive(res, model, nonsilent_audio, min_silence, nonsilent[0])
-
-def get_less_than_n_msec(nonsilents, n):
-    if type(nonsilents) == type(""):
-        f = open(nonsilents,'r')
-        lines = f.read().strip().split('\n')
-        nonsilents = []
-        for line in lines:
-            line = line.split()
-            nonsilents.append([int(line[0]), int(line[1])])
-        f.close()
-
-    print("filler: collating syllables less than %d ms" %n)
-    res = []
-    for nonsilent in nonsilents:
-        if nonsilent[1]-nonsilent[0] < n: res.append(nonsilent)
-    print("filler: length of list = ", len(res))
-
-    return res
-
-
-def predicting(nonsilents, FILE_PATH, MODEL_PATH):
+def predicting(nonsilents, LECTURE_PATH, MODEL_PATH, make_result_txt):
     # 초기화
     model = load_model(MODEL_PATH)
-    lecture_pydub = AudioSegment.from_wav(FILE_PATH)
+    lecture_pydub = AudioSegment.from_wav(LECTURE_PATH+".wav")
+
     res = []
-    tot_len = len(nonsilents)
+    result_txtfile = []
+    result_true_txtfile = []
     i = 1
  
     # predicting 시작
     print("filler: start predicting")
+    print("length of nonsilents = %d" %(len(nonsilents)))
+    print("-----------------------------------------------------")
     for nonsilent in nonsilents:
-        nonsilent_audio = lecture_pydub[nonsilent[0]:nonsilent[1]]
-        if is_filler(nonsilent_audio, model):
-            if nonsilent[1]-nonsilent[0] < 460:
-                res.append(nonsilent)
-            else:
-                slice_recursive(res, model, nonsilent_audio, 70, nonsilent[0])
+        sliced_audio = lecture_pydub[nonsilent[0]:nonsilent[1]]
+        predict_result = is_filler(sliced_audio, model)
+
+        p_true = predict_result[0][0] + predict_result[0][1]
+        p_false = predict_result[0][2] + predict_result[0][3]
+
+        if   (predict_result[0][0]>0.95): filler = True
+        elif (predict_result[0][1]>0.95): filler = True
+        else                           : filler = False
+
+        if filler: res.append(nonsilent)
+   
         i+=1
-        if i%100 == 0: print('now in %d' %i)
-        
-    print("filler: end of predicting")
+        if i%50 == 0: print('now in %d' %i)
+        if make_result_txt: 
+            result_txtfile.append(lst_to_HMS(nonsilent, 1000) + " - " +str(filler) +": [" +  
+                str(predict_result[0][0]) + ", " +  
+                str(predict_result[0][1]) + ", " +  
+                str(predict_result[0][2]) + ", " +  
+                str(predict_result[0][3]) + "]\n")
+
+            if filler: 
+                result_true_txtfile.append(lst_to_HMS(nonsilent, 1000) + ": [" +  
+                str(predict_result[0][0]) + ", " +  
+                str(predict_result[0][1]) + ", " +  
+                str(predict_result[0][2]) + ", " +  
+                str(predict_result[0][3]) + "]\n")
+
+    if make_result_txt:
+        p = LECTURE_PATH+"_predict_result.txt"
+        f = open(p, 'w')
+        for line in result_txtfile: f.write(line)
+        f.close()
+
+        p = LECTURE_PATH+"_predict_result_True.txt"
+        f = open(p, 'w')
+        for line in result_true_txtfile: f.write(line)
+        f.close()
+
     return res
 
+def result_to_fps(fillers, fps):
+    res = []
+    for line in fillers:
+        r1 = line[0]
+        r2 = line[1]
+        r1 = int((r1/1000)*fps)
+        r2 = int((r2/1000)*fps)+1
+        res.append(['filler', r1,r2])
+    return res
 ###
 
-def main(FILE_PATH, MODEL_PATH, n):
-    #nonsilents = scale_and_detect(PATH, True)
-    nonsilents = get_less_than_n_msec('testing.txt', n)
-    res = predicting(nonsilents, FILE_PATH, MODEL_PATH)
-    for re in res: print(re)
+def fd(LECTURE_PATH, MODEL_PATH, fps, msl, st, bound_bigger_than, bound_less_than):
+    lecture_wav = AudioSegment.from_wav(LECTURE_PATH+".wav")
+    nonsilents = detect_nonsilent(lecture_wav, min_silence_len=msl, silence_thresh=st)
+    nonsilents = get_bounded(nonsilents, bound_bigger_than, bound_less_than)
+    fillers = predicting(nonsilents, LECTURE_PATH, MODEL_PATH, False)
+    return result_to_fps(fillers, fps)
 
-###
-FILE_PATH = "sample01.wav"
-MODEL_PATH = "ledifi-algorithm/modules/filler/filler_detection_model.h5"
-MSEC = 500
-
-main(FILE_PATH, MODEL_PATH, MSEC)

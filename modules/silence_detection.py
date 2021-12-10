@@ -1,8 +1,9 @@
 import wave
 import subprocess
 import librosa
-import matplotlib.pyplot as plt         #그래프
 import os
+from pydub import AudioSegment
+from pydub.silence import detect_silence
 
 def convert_to_wav(Path):   
     # mp4파일 시작부터 끝까지 wav파일로 변환하는 함수
@@ -13,24 +14,12 @@ def convert_to_wav(Path):
     Convertpath = Path[:-3]+'wav'
     command = "ffmpeg -i {} -ab 160k -ac 2 -ar 44100 -vn {}".format(Path,os.path.join(Convertpath))
     subprocess.call(command,shell=True)
+        
 
-def getAmplitude(Path, Sample): 
-    # 주파수 분석 후 해당 결과 반환하는 함수
-    # path는 파일이 있는 경로
-    if Path[-3:] != 'wav':
-        print('file is not wav')
-        return False
-    y, sr = librosa.load(Path,sr = Sample)
-    return y
-
-def check_mute(Path, fps, second, sample_slice, silence_thres):
-    # path는 파일이 있는 경로, second는 정적을 판단할 시간초, Sample은 초당 sampling할 샘플의 수
+def check_mute_librosa(Path, fps, second, sample_slice, silence_thres):
+    # path는 파일이 있는 경로, second는 정적을 판단할 시간초
     # 시작부터 끝까지 탐색하여 정적인 구간 반환하는 함수
     # 반환형은 list이고, 리스트의 각 원소 list[0] ~ 에는 정적의 시작과 끝이 리스트로 들어있는 이중리스트구조
-    f = wave.open(Path, 'rb')
-    sr = f.getframerate()
-    fr = f.getnframes()
-    f.close()
 
     print("wav loading")
     y, sr = librosa.load(Path,sr = None)    
@@ -60,92 +49,47 @@ def check_mute(Path, fps, second, sample_slice, silence_thres):
                 if end-start >= second:
                     start *= fps
                     end *= fps
-                    mute.append([int(start), int(end)])
+                    mute.append([int(start), int(end)+1])
                                                  
     return mute
     
-def make_graph(path, Sample):   
-    # wav파일 받아서 그래프 그리는 함수
-    # path는 파일이 있는 경로
-    if path[-3:] != 'wav':
-        print('file is not wav')
-        return False
-
-    y, sr = librosa.load(path,sr = Sample)  
-    num = len(y)
-    print(num)
-    x = range(num)
-    plt.plot(x,y)
-    plt.show()
-
-
-def mute_sample(Path, second,checklist ,Sample):
-    # Path : 원본 강의가 있는 경로 / second : 정적을 판단할 시간초 / checklist : 잘라낼 프레임 시작과 끝을 저장하는 리스트
-    # 프레임을 입력받으면, 그 시간대의 음성을 보고 정적인지 아닌지 구분하는 함수
-    if Path[-3:] != 'mp4':
-        print('file is not mp4')
-        return False
-    # 프레임을 가지고 해당 영상부분 wav파일로 추출
-    # checklist를 나누는 분모는 openvc의 초당 프레임 수
-    start = checklist[0]/30
-    end = checklist[1]/30 - start
-    Convertpath = Path[:-3]+'wav'
-    command = "ffmpeg -ss {} -i {} -t {} {}".format(start,Path,end,os.path.join(Convertpath))
-    subprocess.call(command,shell=True)
-    #추출한 wav파일로 음성분석 시작
-    y, sr = librosa.load(Convertpath,sr = Sample)
-    count = 0
-    mute_count = 0
-    startAmp = -1
-    mute = []
-    ismute = False
-    
-    for i in y:
-        if i < 0.005 and i>-0.005:
-            if startAmp == -1: #시작 위치를 설정
-                startAmp = count
-            mute_count += 1
-        else:
-            if start != -1 and mute_count > sr*second:
-                temp1 = startAmp//Sample
-                temp2 = count//Sample
-                mute += [[temp1,temp2]]
-                ismute = True
-            start = -1
-            mute_count = 0
-        count+=1
-        
-    for k in range(len(mute)):
-        print(mute[k])
-    return ismute
-
-
-def convert_to_wav_frame(Path, checklist):
-    #프레임을 입력받으면 프레임에 해당되는 시간대만 잘라서 wav파일로 추출
-    if Path[-3:] != 'mp4':
-        print('file is not mp4')
-        return False
-    # 프레임을 가지고 해당 영상부분 wav파일로 추출
-    start = checklist[0]/30
-    end = checklist[1]/30 - start
-    Convertpath = Path[:-3]+'wav'
-    command = "ffmpeg -ss {} -i {} -t {} {}".format(start,Path,end,os.path.join(Convertpath))
-    subprocess.call(command,shell=True)
-
 ###
 
-def sd(path, fps, sec, sample_slice, silence_thres): 
-    try:    # wav파일이 이미 있는지 테스트
+def sd_librosa(path, fps, sec, sample_slice, silence_thres): 
+    try:    
         open(path + '.wav', 'r')
         print('wav file is already exist.')
-    except FileNotFoundError:   # 없다면 wav파일 생성
+    except FileNotFoundError:   
+        print('wav file is not exist.')
+        try:
+            convert_to_wav(path+'.mp4')
+            scaling = AudioSegment.from_wav(path+".wav")
+            scaling = scaling.apply_gain(-20.0 - scaling.dBFS)
+            scaling.export(path+".wav", format = "wav")
+        except:
+            print('Wrong path') 
+            return
+
+    return check_mute_librosa(path+".wav", fps, sec, sample_slice, silence_thres)
+                    
+###
+
+def sd_pydub(path, fps, sec):
+    try:    
+        open(path + '.wav', 'r')
+        print('wav file is already exist.')
+    except FileNotFoundError:   
         print('wav file is not exist.')
         try:
             convert_to_wav(path+'.mp4')
         except:
-            print('Wrong path') # 경로가 잘못되었을 경우
+            print('Wrong path') 
             return
 
-    path = path + '.wav'
-    return check_mute(path, fps, sec, sample_slice, silence_thres)
-                    
+    file = AudioSegment.from_wav(path+".wav")
+    file.apply_gain(-20.0 - file.dBFS)
+    res = detect_silence(file, min_silence_len=sec*1000, silence_thresh=-32.64)
+    for i in range(len(res)):
+        res[i][0] = int(fps*res[i][0]/1000)
+        res[i][1] = int(fps*res[i][1]/1000)
+    return res

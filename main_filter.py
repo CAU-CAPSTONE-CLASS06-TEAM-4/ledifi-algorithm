@@ -52,6 +52,11 @@ print("### video checking ###")
 res.sort(key=lambda a: a[1])
 res = video.video_chk(LECTURE_PATH, res, SETTING_VID_TRANSITION_THRES, SETTING_VID_WRITING_THRES, False)
 
+temp = []
+for i in range(len(res)):
+    if res[i][3] != 'writing': temp.append(res[i])
+res = temp
+
 ## 파일 저장 ##
 f = open(LECTURE_PATH+'.txt','w')
 f.write('FPS: %.6f\n' %LECTURE_FPS)
